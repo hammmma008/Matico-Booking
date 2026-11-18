@@ -1,0 +1,244 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ملعب الحي</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f1f5f9;font-family:Arial;color:#172b3a}
+header{background:#102d43;color:white;text-align:center;padding:28px 15px}
+header h1{margin:0 0 10px}
+.container{max-width:600px;margin:20px auto;padding:12px}
+.card{background:white;padding:20px;border-radius:15px;margin-bottom:18px}
+label{display:block;font-weight:bold;margin:13px 0 7px}
+input,select{width:100%;padding:13px;border:1px solid #ccd5df;border-radius:9px;font-size:16px}
+button{border:0;border-radius:9px;padding:13px;cursor:pointer;font-size:15px;font-weight:bold}
+.primary{background:#147d50;color:white;width:100%;margin-top:18px}
+.admin{background:#102d43;color:white;width:100%}
+.danger{background:#fee2e2;color:#b91c1c}
+.success{background:#dcfce7;color:#166534}
+.booking{border:1px solid #ddd;padding:13px;border-radius:10px;margin:12px 0}
+.hidden{display:none}
+.muted{color:#64748b;font-size:13px}
+</style>
+</head>
+<body>
+
+<header>
+<h1>⚽ ملعب الحي</h1>
+<p>احجز موعدك والعب براحتك</p>
+</header>
+
+<div class="container">
+
+<div class="card">
+<h2>📅 حجز موعد جديد</h2>
+<form id="form">
+
+<label>اسم الفريق</label>
+<input id="team" required placeholder="اسم الفريق">
+
+<label>اسم الشخص الحاجز</label>
+<input id="person" required placeholder="الاسم واللقب">
+
+<label>رقم هاتف الحاجز</label>
+<input id="phone" type="tel" required placeholder="رقم الهاتف">
+
+<label>تاريخ اللعب</label>
+<input id="date" type="date" required>
+
+<label>ساعة اللعب</label>
+<select id="time" required>
+<option value="">اختر الساعة</option>
+</select>
+
+<button class="primary">تأكيد الحجز</button>
+</form>
+</div>
+
+<div class="card">
+<h2>🗓️ المواعيد المحجوزة</h2>
+<div id="public"></div>
+</div>
+
+<div class="card">
+<h2>📞 مسؤول الملعب</h2>
+<p id="manager">لم يحدد رقم المسؤول بعد.</p>
+</div>
+
+<div class="card">
+<button class="admin" onclick="login()">🔐 دخول الإدارة</button>
+
+<div id="panel" class="hidden">
+<h2>لوحة الإدارة</h2>
+<div id="all"></div>
+
+<h3>رقم هاتف المسؤول</h3>
+<input id="managerNumber" placeholder="رقم الهاتف">
+<button class="primary" onclick="saveManager()">حفظ الرقم</button>
+
+<h3>أرشيف الحجوزات</h3>
+<div id="archive"></div>
+</div>
+</div>
+
+</div>
+
+<footer style="text-align:center;padding:20px;color:#64748b">
+ملعب الحي © 2026
+</footer>
+
+<script>
+const PIN="1234";
+const KEY="stadium_bookings";
+const OLD="stadium_archive";
+let bookings=JSON.parse(localStorage.getItem(KEY)||"[]");
+let archive=JSON.parse(localStorage.getItem(OLD)||"[]");
+let admin=false;
+
+function save(){
+localStorage.setItem(KEY,JSON.stringify(bookings));
+localStorage.setItem(OLD,JSON.stringify(archive));
+}
+
+function dateString(d){
+return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+
+function monday(d){
+let x=new Date(d);
+x.setHours(0,0,0,0);
+x.setDate(x.getDate()-(x.getDay()+6)%7);
+return x;
+}
+
+function archiveOld(){
+let start=monday(new Date());
+let old=bookings.filter(b=>new Date(b.date+"T12:00:00")<start);
+archive.push(...old);
+bookings=bookings.filter(b=>new Date(b.date+"T12:00:00")>=start);
+save();
+}
+
+function escapeHTML(s){
+return String(s).replace(/[&<>"']/g,c=>({
+"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+}[c]));
+}
+
+let time=document.getElementById("time");
+for(let h=8;h<23;h++){
+let t=String(h).padStart(2,"0")+":00";
+time.add(new Option(t+" - "+String(h+1).padStart(2,"0")+":00",t));
+}
+
+let today=dateString(new Date());
+document.getElementById("date").min=today;
+let last=new Date();
+last.setDate(last.getDate()+6);
+document.getElementById("date").max=dateString(last);
+
+document.getElementById("form").onsubmit=function(e){
+e.preventDefault();
+
+let team=document.getElementById("team").value.trim();
+let person=document.getElementById("person").value.trim();
+let phone=document.getElementById("phone").value.trim();
+let date=document.getElementById("date").value;
+let time=document.getElementById("time").value;
+
+if(bookings.some(b=>b.date===date&&b.time===time&&b.status==="confirmed")){
+alert("هذا الموعد محجوز بالفعل!");
+return;
+}
+
+bookings.push({
+id:Date.now(),team,person,phone,date,time,status:"confirmed"
+});
+
+save();
+render();
+this.reset();
+alert("تم الحجز بنجاح ⚽");
+};
+
+function render(){
+let confirmed=bookings.filter(b=>b.status==="confirmed");
+document.getElementById("public").innerHTML=
+confirmed.length?confirmed.map(b=>`
+<div class="booking">
+<b>⚽ ${escapeHTML(b.team)}</b>
+<p>📅 ${b.date}</p>
+<p>🕒 ${b.time}</p>
+<span style="color:green">حجز مؤكد</span>
+</div>`).join(""):"لا توجد حجوزات حالياً.";
+
+if(admin){
+document.getElementById("all").innerHTML=
+bookings.map(b=>`
+<div class="booking">
+<b>${escapeHTML(b.team)}</b>
+<p>الحاجز: ${escapeHTML(b.person)}</p>
+<p>الهاتف: ${escapeHTML(b.phone)}</p>
+<p>${b.date} - ${b.time}</p>
+<p>الحالة: ${b.status==="confirmed"?"مؤكد":"مرفوض"}</p>
+<button class="danger" onclick="reject(${b.id})">رفض / إلغاء</button>
+<button class="success" onclick="accept(${b.id})">قبول</button>
+</div>`).join("")||"لا توجد حجوزات.";
+
+document.getElementById("archive").innerHTML=
+archive.map(b=>`<p>${escapeHTML(b.team)} - ${b.date}</p>`).join("")||"لا يوجد أرشيف.";
+}
+}
+
+function login(){
+if(admin){
+admin=false;
+document.getElementById("panel").classList.add("hidden");
+return;
+}
+if(prompt("رمز الإدارة:")===PIN){
+admin=true;
+document.getElementById("panel").classList.remove("hidden");
+render();
+}else alert("رمز غير صحيح");
+}
+
+function reject(id){
+let b=bookings.find(x=>x.id===id);
+if(b){b.status="rejected";save();render();}
+}
+
+function accept(id){
+let b=bookings.find(x=>x.id===id);
+if(!b)return;
+if(bookings.some(x=>x.id!==id&&x.date===b.date&&x.time===b.time&&x.status==="confirmed")){
+alert("الموعد محجوز بالفعل");
+return;
+}
+b.status="confirmed";
+save();render();
+}
+
+function saveManager(){
+let n=document.getElementById("managerNumber").value.trim();
+localStorage.setItem("stadium_manager",n);
+showManager();
+alert("تم حفظ الرقم");
+}
+
+function showManager(){
+document.getElementById("manager").textContent=
+localStorage.getItem("stadium_manager")||"لم يحدد رقم المسؤول بعد.";
+document.getElementById("managerNumber").value=
+localStorage.getItem("stadium_manager")||"";
+}
+
+archiveOld();
+showManager();
+render();
+</script>
+</body>
+</html>
