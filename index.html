@@ -3,242 +3,132 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ملعب الحي</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matico Nigro | حجز الملعب</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#f1f5f9;font-family:Arial;color:#172b3a}
-header{background:#102d43;color:white;text-align:center;padding:28px 15px}
-header h1{margin:0 0 10px}
-.container{max-width:600px;margin:20px auto;padding:12px}
-.card{background:white;padding:20px;border-radius:15px;margin-bottom:18px}
-label{display:block;font-weight:bold;margin:13px 0 7px}
-input,select{width:100%;padding:13px;border:1px solid #ccd5df;border-radius:9px;font-size:16px}
-button{border:0;border-radius:9px;padding:13px;cursor:pointer;font-size:15px;font-weight:bold}
-.primary{background:#147d50;color:white;width:100%;margin-top:18px}
-.admin{background:#102d43;color:white;width:100%}
-.danger{background:#fee2e2;color:#b91c1c}
-.success{background:#dcfce7;color:#166534}
-.booking{border:1px solid #ddd;padding:13px;border-radius:10px;margin:12px 0}
-.hidden{display:none}
-.muted{color:#64748b;font-size:13px}
+body{margin:0;background:#101810;color:white;font-family:Arial,sans-serif}
+header{background:#172b1c;padding:28px 15px;text-align:center;border-bottom:3px solid #b5e853}
+header h1{margin:0;color:#b5e853;font-size:30px}
+header p{color:#ddd}
+.container{max-width:520px;margin:25px auto;padding:20px}
+.card{background:#1b281e;padding:22px;border-radius:16px;box-shadow:0 5px 20px #0005}
+h2{color:#b5e853;text-align:center}
+label{display:block;margin:15px 0 7px}
+input{width:100%;padding:13px;border:1px solid #52634e;border-radius:9px;background:#101810;color:white;font-size:16px}
+button{width:100%;padding:15px;margin-top:20px;border:0;border-radius:9px;background:#b5e853;color:#142016;font-weight:bold;font-size:17px;cursor:pointer}
+button:disabled{opacity:.5}
+#message{text-align:center;margin-top:15px;line-height:1.7}
+footer{text-align:center;color:#aaa;padding:25px}
 </style>
 </head>
 <body>
 
 <header>
-<h1>⚽ ملعب الحي</h1>
-<p>احجز موعدك والعب براحتك</p>
+<h1>⚽ MATICO NIGRO</h1>
+<p>احجز ملعبك واستمتع بالمباراة</p>
 </header>
 
 <div class="container">
-
 <div class="card">
-<h2>📅 حجز موعد جديد</h2>
-<form id="form">
+<h2>حجز الملعب</h2>
 
-<label>اسم الفريق</label>
-<input id="team" required placeholder="اسم الفريق">
+<form id="bookingForm">
+<label>اسم اللاعب</label>
+<input id="playerName" type="text" placeholder="أدخل اسمك" required>
 
-<label>اسم الشخص الحاجز</label>
-<input id="person" required placeholder="الاسم واللقب">
+<label>رقم الهاتف</label>
+<input id="phone" type="tel" placeholder="رقم الهاتف" required>
 
-<label>رقم هاتف الحاجز</label>
-<input id="phone" type="tel" required placeholder="رقم الهاتف">
+<label>تاريخ الحجز</label>
+<input id="bookingDate" type="date" required>
 
-<label>تاريخ اللعب</label>
-<input id="date" type="date" required>
+<label>ساعة الحجز</label>
+<input id="bookingTime" type="time" required>
 
-<label>ساعة اللعب</label>
-<select id="time" required>
-<option value="">اختر الساعة</option>
-</select>
-
-<button class="primary">تأكيد الحجز</button>
+<button id="submitBtn" type="submit">إرسال طلب الحجز</button>
 </form>
-</div>
 
-<div class="card">
-<h2>🗓️ المواعيد المحجوزة</h2>
-<div id="public"></div>
-</div>
-
-<div class="card">
-<h2>📞 مسؤول الملعب</h2>
-<p id="manager">لم يحدد رقم المسؤول بعد.</p>
-</div>
-
-<div class="card">
-<button class="admin" onclick="login()">🔐 دخول الإدارة</button>
-
-<div id="panel" class="hidden">
-<h2>لوحة الإدارة</h2>
-<div id="all"></div>
-
-<h3>رقم هاتف المسؤول</h3>
-<input id="managerNumber" placeholder="رقم الهاتف">
-<button class="primary" onclick="saveManager()">حفظ الرقم</button>
-
-<h3>أرشيف الحجوزات</h3>
-<div id="archive"></div>
+<div id="message"></div>
 </div>
 </div>
 
-</div>
-
-<footer style="text-align:center;padding:20px;color:#64748b">
-ملعب الحي © 2026
-</footer>
+<footer>© 2026 Matico Nigro - جميع الحقوق محفوظة</footer>
 
 <script>
-const PIN="1234";
-const KEY="stadium_bookings";
-const OLD="stadium_archive";
-let bookings=JSON.parse(localStorage.getItem(KEY)||"[]");
-let archive=JSON.parse(localStorage.getItem(OLD)||"[]");
-let admin=false;
+const SUPABASE_URL = "https://gqokudgmvnifunpnijxu.supabase.co";
+const SUPABASE_KEY = "sb_publishable_YX4gafdSgWq1XmhtytfEIw_g-Qh0k4a";
 
-function save(){
-localStorage.setItem(KEY,JSON.stringify(bookings));
-localStorage.setItem(OLD,JSON.stringify(archive));
-}
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
 
-function dateString(d){
-return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-}
+const form = document.getElementById("bookingForm");
+const message = document.getElementById("message");
+const button = document.getElementById("submitBtn");
+const dateInput = document.getElementById("bookingDate");
 
-function monday(d){
-let x=new Date(d);
-x.setHours(0,0,0,0);
-x.setDate(x.getDate()-(x.getDay()+6)%7);
-return x;
-}
+const today = new Date();
+const localDate = new Date(today.getTime() - today.getTimezoneOffset()*60000)
+.toISOString().split("T")[0];
 
-function archiveOld(){
-let start=monday(new Date());
-let old=bookings.filter(b=>new Date(b.date+"T12:00:00")<start);
-archive.push(...old);
-bookings=bookings.filter(b=>new Date(b.date+"T12:00:00")>=start);
-save();
-}
+dateInput.min = localDate;
 
-function escapeHTML(s){
-return String(s).replace(/[&<>"']/g,c=>({
-"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-}[c]));
-}
+form.addEventListener("submit", async function(e){
+  e.preventDefault();
 
-let time=document.getElementById("time");
-for(let h=8;h<23;h++){
-let t=String(h).padStart(2,"0")+":00";
-time.add(new Option(t+" - "+String(h+1).padStart(2,"0")+":00",t));
-}
+  const name = document.getElementById("playerName").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  const date = dateInput.value;
+  const time = document.getElementById("bookingTime").value;
 
-let today=dateString(new Date());
-document.getElementById("date").min=today;
-let last=new Date();
-last.setDate(last.getDate()+6);
-document.getElementById("date").max=dateString(last);
+  if(!name || !phone || !date || !time){
+    message.textContent = "يرجى ملء جميع المعلومات";
+    return;
+  }
 
-document.getElementById("form").onsubmit=function(e){
-e.preventDefault();
+  if(date < localDate){
+    message.textContent = "لا يمكن اختيار تاريخ سابق";
+    return;
+  }
 
-let team=document.getElementById("team").value.trim();
-let person=document.getElementById("person").value.trim();
-let phone=document.getElementById("phone").value.trim();
-let date=document.getElementById("date").value;
-let time=document.getElementById("time").value;
+  const start = new Date(date + "T" + time);
+  const end = new Date(start.getTime() + 60*60*1000);
 
-if(bookings.some(b=>b.date===date&&b.time===time&&b.status==="confirmed")){
-alert("هذا الموعد محجوز بالفعل!");
-return;
-}
+  if(start <= new Date()){
+    message.textContent = "يرجى اختيار موعد مستقبلي";
+    return;
+  }
 
-bookings.push({
-id:Date.now(),team,person,phone,date,time,status:"confirmed"
+  button.disabled = true;
+  button.textContent = "جارٍ إرسال الطلب...";
+
+  const { error } = await db
+    .from("bookings")
+    .insert([{
+      player_name: name,
+      phone: phone,
+      booking_date: date,
+      booking_time: time,
+      status: "pending"
+    }]);
+
+  button.disabled = false;
+  button.textContent = "إرسال طلب الحجز";
+
+  if(error){
+    console.error(error);
+    message.textContent = "تعذر إرسال الطلب. تحقق من إعدادات قاعدة البيانات.";
+    return;
+  }
+
+  message.textContent = "✅ تم إرسال طلبك بنجاح! انتظر موافقة الإدارة.";
+  form.reset();
+  dateInput.min = localDate;
 });
-
-save();
-render();
-this.reset();
-alert("تم الحجز بنجاح ⚽");
-};
-
-function render(){
-let confirmed=bookings.filter(b=>b.status==="confirmed");
-document.getElementById("public").innerHTML=
-confirmed.length?confirmed.map(b=>`
-<div class="booking">
-<b>⚽ ${escapeHTML(b.team)}</b>
-<p>📅 ${b.date}</p>
-<p>🕒 ${b.time}</p>
-<span style="color:green">حجز مؤكد</span>
-</div>`).join(""):"لا توجد حجوزات حالياً.";
-
-if(admin){
-document.getElementById("all").innerHTML=
-bookings.map(b=>`
-<div class="booking">
-<b>${escapeHTML(b.team)}</b>
-<p>الحاجز: ${escapeHTML(b.person)}</p>
-<p>الهاتف: ${escapeHTML(b.phone)}</p>
-<p>${b.date} - ${b.time}</p>
-<p>الحالة: ${b.status==="confirmed"?"مؤكد":"مرفوض"}</p>
-<button class="danger" onclick="reject(${b.id})">رفض / إلغاء</button>
-<button class="success" onclick="accept(${b.id})">قبول</button>
-</div>`).join("")||"لا توجد حجوزات.";
-
-document.getElementById("archive").innerHTML=
-archive.map(b=>`<p>${escapeHTML(b.team)} - ${b.date}</p>`).join("")||"لا يوجد أرشيف.";
-}
-}
-
-function login(){
-if(admin){
-admin=false;
-document.getElementById("panel").classList.add("hidden");
-return;
-}
-if(prompt("رمز الإدارة:")===PIN){
-admin=true;
-document.getElementById("panel").classList.remove("hidden");
-render();
-}else alert("رمز غير صحيح");
-}
-
-function reject(id){
-let b=bookings.find(x=>x.id===id);
-if(b){b.status="rejected";save();render();}
-}
-
-function accept(id){
-let b=bookings.find(x=>x.id===id);
-if(!b)return;
-if(bookings.some(x=>x.id!==id&&x.date===b.date&&x.time===b.time&&x.status==="confirmed")){
-alert("الموعد محجوز بالفعل");
-return;
-}
-b.status="confirmed";
-save();render();
-}
-
-function saveManager(){
-let n=document.getElementById("managerNumber").value.trim();
-localStorage.setItem("stadium_manager",n);
-showManager();
-alert("تم حفظ الرقم");
-}
-
-function showManager(){
-document.getElementById("manager").textContent=
-localStorage.getItem("stadium_manager")||"لم يحدد رقم المسؤول بعد.";
-document.getElementById("managerNumber").value=
-localStorage.getItem("stadium_manager")||"";
-}
-
-archiveOld();
-showManager();
-render();
 </script>
+
 </body>
 </html>
